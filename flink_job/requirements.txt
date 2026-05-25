@@ -1,0 +1,3 @@
+apache-flink==1.18.0
+pyiceberg[s3]==0.5.1
+confluent-kafka>=2.3.0

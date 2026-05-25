@@ -1,0 +1,10 @@
+apache-airflow-providers-http>=4.6.0
+apache-airflow-providers-slack>=8.0.0
+confluent-kafka>=2.3.0
+pyiceberg[s3]==0.5.1
+requests>=2.31.0
+pandas>=2.0.0
+pyarrow>=14.0.0
+
+# Vendored sentinel library — copied into the image by Dockerfile.
+./pipeline_sentinel-0.1.0-py3-none-any.whl

@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+*.egg
+build/
+dist/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Type checkers / linters
+.mypy_cache/
+.ruff_cache/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+
+# Airflow / Astronomer
+.astro/
+airflow.cfg
+airflow.db
+logs/
+
+# Local data and runtime state
+data/
+*.duckdb
+*.duckdb.wal
+*.parquet
+warehouse/
+
+# Flink JARs downloaded by Dockerfile (not committed; pulled at build time)
+flink_job/lib/
+
+# Secrets
+.env
+.env.local

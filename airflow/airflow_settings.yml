@@ -1,0 +1,37 @@
+airflow:
+  connections:
+    - conn_id: flink_rest
+      conn_type: http
+      host: flink-jobmanager
+      port: 8081
+      schema: http
+    - conn_id: iceberg_rest
+      conn_type: http
+      host: iceberg-rest
+      port: 8181
+      schema: http
+    - conn_id: minio_s3
+      conn_type: aws
+      host: minio
+      port: 9000
+      login: minioadmin
+      password: minioadmin
+      extra: '{"endpoint_url": "http://minio:9000"}'
+    - conn_id: kafka_default
+      conn_type: kafka
+      extra: '{"bootstrap.servers": "kafka:29092"}'
+    - conn_id: slack_webhook
+      conn_type: http
+      host: hooks.slack.com
+      password: "{{ var.value.slack_webhook_token }}"
+      schema: https
+
+  variables:
+    - variable_name: flink_job_jar_path
+      variable_value: /opt/flink_job/job.py
+    - variable_name: iceberg_warehouse
+      variable_value: s3://warehouse/
+    - variable_name: dlq_rate_threshold
+      variable_value: "0.05"
+    - variable_name: slack_webhook_token
+      variable_value: "REPLACE_ME"

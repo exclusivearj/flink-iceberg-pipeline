@@ -1,0 +1,90 @@
+{
+  "uid": "p1-pipeline-overview",
+  "title": "P1 Pipeline Overview",
+  "tags": ["project1", "flink", "kafka", "iceberg"],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "15s",
+  "time": {"from": "now-1h", "to": "now"},
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Events/sec processed (Flink)",
+      "gridPos": {"x": 0, "y": 0, "w": 8, "h": 5},
+      "targets": [
+        {
+          "expr": "sum(rate(flink_taskmanager_job_task_numRecordsOut[1m]))",
+          "refId": "A"
+        }
+      ],
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}},
+      "fieldConfig": {"defaults": {"unit": "ops"}}
+    },
+    {
+      "id": 2,
+      "type": "gauge",
+      "title": "DLQ rate %",
+      "gridPos": {"x": 8, "y": 0, "w": 8, "h": 5},
+      "targets": [
+        {
+          "expr": "100 * sum(rate(kafka_log_log_size{topic=\"dlq_events\"}[5m])) / clamp_min(sum(rate(kafka_log_log_size{topic=\"page_events\"}[5m])), 1)",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {"defaults": {"unit": "percent", "thresholds": {"mode": "absolute", "steps": [{"value": null, "color": "green"}, {"value": 5, "color": "yellow"}, {"value": 10, "color": "red"}]}}}
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Kafka consumer lag (page_events)",
+      "gridPos": {"x": 16, "y": 0, "w": 8, "h": 5},
+      "targets": [
+        {
+          "expr": "sum by (partition) (kafka_consumergroup_lag{topic=\"page_events\"})",
+          "refId": "A",
+          "legendFormat": "p={{partition}}"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Flink checkpoint duration (ms)",
+      "gridPos": {"x": 0, "y": 5, "w": 12, "h": 7},
+      "targets": [
+        {
+          "expr": "flink_jobmanager_job_lastCheckpointDuration",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {"defaults": {"unit": "ms"}}
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Flink task slots used",
+      "gridPos": {"x": 12, "y": 5, "w": 6, "h": 7},
+      "targets": [
+        {
+          "expr": "sum(flink_jobmanager_taskSlotsTotal) - sum(flink_jobmanager_taskSlotsAvailable)",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "piechart",
+      "title": "DLQ reasons (last 1h)",
+      "gridPos": {"x": 18, "y": 5, "w": 6, "h": 7},
+      "targets": [
+        {
+          "expr": "sum by (reason) (rate(sentinel_dlq_count[1h]))",
+          "refId": "A",
+          "legendFormat": "{{reason}}"
+        }
+      ]
+    }
+  ]
+}

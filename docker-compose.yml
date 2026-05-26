@@ -222,11 +222,10 @@ services:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
       AIRFLOW__CORE__FERNET_KEY: ""
-    command: >
-      bash -c "airflow db migrate &&
-               airflow users create --username admin --password admin
-                 --firstname Admin --lastname User --role Admin
-                 --email admin@example.com || true"
+      AIRFLOW__CORE__AUTH_MANAGER: airflow.api_fastapi.auth.managers.simple.simple_auth_manager.SimpleAuthManager
+      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS: "admin:ADMIN"
+      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_ALL_ADMINS: "True"
+    command: bash -c "airflow db migrate"
     volumes:
       - ./airflow/dags:/usr/local/airflow/dags
       - ./airflow/airflow_settings.yml:/usr/local/airflow/airflow_settings.yml
@@ -245,12 +244,15 @@ services:
       AIRFLOW__WEBSERVER__SECRET_KEY: "p1_secret_key_change_in_prod"
       AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "false"
       AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "true"
+      AIRFLOW__CORE__AUTH_MANAGER: airflow.api_fastapi.auth.managers.simple.simple_auth_manager.SimpleAuthManager
+      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS: "admin:ADMIN"
+      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_ALL_ADMINS: "True"
     volumes:
       - ./airflow/dags:/usr/local/airflow/dags
       - ./airflow/airflow_settings.yml:/usr/local/airflow/airflow_settings.yml
     ports:
       - "8082:8080"
-    command: api-server
+    command: airflow api-server
     networks: [pipeline-net]
 
   airflow-scheduler:
@@ -263,8 +265,30 @@ services:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
       AIRFLOW__CORE__FERNET_KEY: ""
+      AIRFLOW__CORE__AUTH_MANAGER: airflow.api_fastapi.auth.managers.simple.simple_auth_manager.SimpleAuthManager
+      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS: "admin:ADMIN"
+      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_ALL_ADMINS: "True"
     volumes:
       - ./airflow/dags:/usr/local/airflow/dags
       - ./airflow/airflow_settings.yml:/usr/local/airflow/airflow_settings.yml
-    command: scheduler
+    command: airflow scheduler
+    networks: [pipeline-net]
+
+  airflow-dag-processor:
+    image: p1-airflow:latest
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+    environment:
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__CORE__FERNET_KEY: ""
+      AIRFLOW__CORE__AUTH_MANAGER: airflow.api_fastapi.auth.managers.simple.simple_auth_manager.SimpleAuthManager
+      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS: "admin:ADMIN"
+      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_ALL_ADMINS: "True"
+    volumes:
+      - ./airflow/dags:/usr/local/airflow/dags
+      - ./airflow/airflow_settings.yml:/usr/local/airflow/airflow_settings.yml
+    command: airflow dag-processor
     networks: [pipeline-net]

@@ -1,4 +1,4 @@
-FROM quay.io/astronomer/astro-runtime:10.5.0
+FROM astrocrpublic.azurecr.io/runtime:3.1-5
 
 # requirements.txt is installed by Astro Runtime automatically; we add
 # the vendored sentinel wheel here so DAGs can import it.

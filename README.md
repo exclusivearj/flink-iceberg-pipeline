@@ -2,7 +2,7 @@
 
 > Production-style Flink streaming pipeline with inline data quality gates, an Apache Iceberg sink on MinIO, and Airflow orchestration on top.
 
-This is **Project 1** in the Netflix L5 portfolio. It demonstrates PyFlink DataStream API + side-output DLQ patterns, Iceberg schema evolution + time travel, exactly-once checkpointing, Prometheus/Grafana observability, and Airflow lifecycle/maintenance/health DAGs.
+This is **Project 1** in the data engineering portfolio. It demonstrates PyFlink DataStream API + side-output DLQ patterns, Iceberg schema evolution + time travel, exactly-once checkpointing, Prometheus/Grafana observability, and Airflow lifecycle/maintenance/health DAGs.
 
 ## Stack
 

@@ -8,6 +8,20 @@ volumes:
   minio-data:
   postgres-data:
 
+x-airflow-env: &airflow-env
+  AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+  AIRFLOW__CORE__EXECUTOR: LocalExecutor
+  AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+  AIRFLOW__CORE__FERNET_KEY: ""
+  AIRFLOW__API__SECRET_KEY: "5+wlq7e07xXdBcELSRXXvxOaIidOhq8d36J9PIYGgEM="
+  AIRFLOW__API_AUTH__JWT_SECRET: "OlINEGSM/N9ZPdX3EdAtfbPAiV3R2D7iwMcTv9W+i6o="
+  AIRFLOW__CORE__EXECUTION_API_SERVER_URL: "http://airflow-webserver:8080/execution/"
+  AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "false"
+  AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "true"
+  AIRFLOW__CORE__AUTH_MANAGER: airflow.api_fastapi.auth.managers.simple.simple_auth_manager.SimpleAuthManager
+  AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS: "admin:ADMIN"
+  AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_ALL_ADMINS: "True"
+
 services:
   # ── Kafka ───────────────────────────────────────────────────────────────
   zookeeper:
@@ -218,13 +232,7 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
-      AIRFLOW__CORE__EXECUTOR: LocalExecutor
-      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
-      AIRFLOW__CORE__FERNET_KEY: ""
-      AIRFLOW__CORE__AUTH_MANAGER: airflow.api_fastapi.auth.managers.simple.simple_auth_manager.SimpleAuthManager
-      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS: "admin:ADMIN"
-      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_ALL_ADMINS: "True"
+      <<: *airflow-env
     command: bash -c "airflow db migrate"
     volumes:
       - ./airflow/dags:/usr/local/airflow/dags
@@ -237,16 +245,7 @@ services:
       airflow-init:
         condition: service_completed_successfully
     environment:
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
-      AIRFLOW__CORE__EXECUTOR: LocalExecutor
-      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
-      AIRFLOW__CORE__FERNET_KEY: ""
-      AIRFLOW__WEBSERVER__SECRET_KEY: "p1_secret_key_change_in_prod"
-      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "false"
-      AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "true"
-      AIRFLOW__CORE__AUTH_MANAGER: airflow.api_fastapi.auth.managers.simple.simple_auth_manager.SimpleAuthManager
-      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS: "admin:ADMIN"
-      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_ALL_ADMINS: "True"
+      <<: *airflow-env
     volumes:
       - ./airflow/dags:/usr/local/airflow/dags
       - ./airflow/airflow_settings.yml:/usr/local/airflow/airflow_settings.yml
@@ -261,13 +260,7 @@ services:
       airflow-webserver:
         condition: service_started
     environment:
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
-      AIRFLOW__CORE__EXECUTOR: LocalExecutor
-      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
-      AIRFLOW__CORE__FERNET_KEY: ""
-      AIRFLOW__CORE__AUTH_MANAGER: airflow.api_fastapi.auth.managers.simple.simple_auth_manager.SimpleAuthManager
-      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS: "admin:ADMIN"
-      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_ALL_ADMINS: "True"
+      <<: *airflow-env
     volumes:
       - ./airflow/dags:/usr/local/airflow/dags
       - ./airflow/airflow_settings.yml:/usr/local/airflow/airflow_settings.yml
@@ -280,13 +273,7 @@ services:
       airflow-init:
         condition: service_completed_successfully
     environment:
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
-      AIRFLOW__CORE__EXECUTOR: LocalExecutor
-      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
-      AIRFLOW__CORE__FERNET_KEY: ""
-      AIRFLOW__CORE__AUTH_MANAGER: airflow.api_fastapi.auth.managers.simple.simple_auth_manager.SimpleAuthManager
-      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS: "admin:ADMIN"
-      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_ALL_ADMINS: "True"
+      <<: *airflow-env
     volumes:
       - ./airflow/dags:/usr/local/airflow/dags
       - ./airflow/airflow_settings.yml:/usr/local/airflow/airflow_settings.yml

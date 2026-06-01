@@ -9,7 +9,7 @@ volumes:
   postgres-data:
 
 x-airflow-env: &airflow-env
-  AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+  AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
   AIRFLOW__CORE__EXECUTOR: LocalExecutor
   AIRFLOW__CORE__LOAD_EXAMPLES: "false"
   AIRFLOW__CORE__FERNET_KEY: ""
@@ -233,7 +233,10 @@ services:
         condition: service_healthy
     environment:
       <<: *airflow-env
-    command: bash -c "airflow db migrate"
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - airflow db migrate
     volumes:
       - ./airflow/dags:/usr/local/airflow/dags
       - ./airflow/airflow_settings.yml:/usr/local/airflow/airflow_settings.yml

@@ -83,6 +83,16 @@ make down                      # tear down + delete volumes
 
 See [airflow/](airflow/) for the Astronomer scaffold.
 
+## Troubleshooting `make up`
+
+A clean `make up` builds three local images (`flink-jobmanager`, `event-generator`, `airflow-*`). On Apple Silicon / arm64 the build has a few non-obvious requirements that are baked into the Dockerfiles — documented here so they don't get accidentally reverted:
+
+- **Airflow image — vendored `observe` wheel.** Astro Runtime auto-installs `airflow/requirements.txt` via an ONBUILD hook, so the wheel must *not* be listed there (a relative path can't be resolved during ONBUILD). Instead `airflow/Dockerfile` COPYs `pipeline_observe-*.whl` to `/tmp/` and installs it as an explicit `pip install` argument.
+- **Airflow image — `build-essential`.** `pyiceberg[s3]==0.5.1` (needed by the DAGs) pulls `mmhash3`, which has no arm64 wheel and compiles from source. `airflow/packages.txt` lists `build-essential` so Astro installs the compiler before pip runs.
+- **Flink image — JDK headers + `g++`.** `apache-flink==1.18.0` pulls `pemja`, which has no arm64 wheel and needs `g++` plus JNI headers. The `flink:1.18` base ships only a JRE, so `flink_job/Dockerfile` installs `openjdk-11-jdk-headless` and symlinks its `include/` to `/opt/java/openjdk/include` (where `pemja` looks).
+- **Iceberg connector version.** `iceberg-flink-runtime-1.18` was first published at **1.5.0**, so `flink_job/Dockerfile` pins `ICEBERG_VER=1.5.2` (the 1.4.x line has no Flink 1.18 runtime).
+- **Postgres port in the Airflow DB URL.** `AIRFLOW__DATABASE__SQL_ALCHEMY_CONN` must include `:5432` (`...@postgres:5432/airflow`). The Astro entrypoint parses the port out of this URL to wait for Postgres with `nc`; omit it and the webserver/scheduler/dag-processor hang on `nc: port number invalid` forever (`airflow-init` is unaffected because it overrides the entrypoint).
+
 ## Repository layout
 
 ```

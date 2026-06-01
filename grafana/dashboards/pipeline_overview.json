@@ -80,7 +80,7 @@
       "gridPos": {"x": 18, "y": 5, "w": 6, "h": 7},
       "targets": [
         {
-          "expr": "sum by (reason) (rate(sentinel_dlq_count[1h]))",
+          "expr": "sum by (reason) (rate(observe_dlq_count[1h]))",
           "refId": "A",
           "legendFormat": "{{reason}}"
         }

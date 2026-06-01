@@ -15,7 +15,7 @@ This is **Project 1** in the data engineering portfolio. It demonstrates PyFlink
 | Catalog | Iceberg REST catalog (`tabulario/iceberg-rest`) |
 | Observability | Prometheus + Grafana |
 | Orchestration | Astronomer Airflow 2.9 (Astro Runtime 10.5.0) |
-| Data quality | [`pipeline-sentinel`](vendor/) — vendored wheel |
+| Data quality | [`pipeline-observe`](vendor/) — vendored wheel |
 
 ## Architecture
 
@@ -62,12 +62,13 @@ make submit                    # submit PyFlink job via the Flink CLI inside the
 make logs                      # tail Flink JM+TM logs
 
 # After a few minutes, time-travel demo:
-make venv                      # one-time: create local venv + install vendored sentinel
-make query                     # python iceberg/query_time_travel.py
+make query                     # python iceberg/query_time_travel.py (auto-creates .venv)
 
-make test                      # unit tests (schemas, gates, sink DDL)
+make test                      # unit tests, schemas/gates/sink DDL (auto-creates .venv)
 make down                      # tear down + delete volumes
 ```
+
+`make test`, `make query`, and `make venv` all bootstrap a local Python 3.11 virtualenv at `.venv/` on first use via a observe file at `.venv/.deps-installed`. Subsequent calls are cached. Run `make clean` (or `rm -rf .venv`) to force a full rebuild — useful if the venv was left in a stale state. Override the interpreter with `PYTHON=python3.x make ...` if 3.11 is unavailable.
 
 ## Airflow
 
@@ -76,7 +77,7 @@ make down                      # tear down + delete volumes
 | DAG | Schedule | Purpose |
 |---|---|---|
 | `p1_pipeline_controller` | manual | wait for Kafka+MinIO+Flink → init Iceberg → submit Flink job → store job_id |
-| `p1_iceberg_maintenance` | `0 2 * * *` | compact `page_events_aggregated` → expire snapshots > 7d → validate (using `pipeline-sentinel`) → annotate Grafana |
+| `p1_iceberg_maintenance` | `0 2 * * *` | compact `page_events_aggregated` → expire snapshots > 7d → validate (using `pipeline-observe`) → annotate Grafana |
 | `p1_dlq_monitor` | `0 * * * *` | sample DLQ topic → count reasons → alert Slack if DLQ rate > 5% |
 | `p1_health_report` | `30 8 * * *` | aggregate Flink + Kafka + Iceberg metrics into a daily summary |
 
@@ -109,15 +110,15 @@ flink-iceberg-pipeline/
 ├── tests/                          ← schemas, gates, sink DDL
 ├── airflow/                        ← Astronomer scaffold (Dockerfile, DAGs, utils)
 └── vendor/
-    └── pipeline_sentinel-0.1.0-py3-none-any.whl   ← vendored from Project 3
+    └── pipeline_observe-0.1.0-py3-none-any.whl   ← vendored from Project 3
 ```
 
 ## Standalone vs sibling-repo development
 
-This repo is **standalone**: `pipeline-sentinel` is installed from the vendored wheel under `vendor/`. To develop the library and this pipeline together, replace the wheel reference with an editable install pointing to a sibling clone:
+This repo is **standalone**: `pipeline-observe` is installed from the vendored wheel under `vendor/`. To develop the library and this pipeline together, replace the wheel reference with an editable install pointing to a sibling clone:
 
 ```bash
-.venv/bin/pip install -e ~/Documents/Developer/pipeline-sentinel
+.venv/bin/pip install -e ~/Documents/Developer/pipeline-observe
 ```
 
 ## Spec sources

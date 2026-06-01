@@ -58,7 +58,7 @@ def p1_iceberg_maintenance():
 
     @task
     def validate_latest_snapshot() -> dict:
-        from sentinel.checks import RowCountCheck
+        from observe.checks import RowCountCheck
 
         row_count = get_table_row_count("default", "page_events_aggregated")
         snap = get_latest_snapshot_info("default", "page_events_aggregated")

@@ -1,6 +1,7 @@
-PYTHON ?= python3
+PYTHON ?= python3.11
 VENV   := .venv
-PIP    := $(VENV)/bin/pip
+PIP    := $(VENV)/bin/pip3
+OBSERVE := $(VENV)/.deps-installed
 
 .PHONY: help venv up down restart submit test logs query clean \
         airflow-build airflow-init airflow-up airflow-down airflow-logs airflow-ui \
@@ -8,22 +9,26 @@ PIP    := $(VENV)/bin/pip
 
 help:
 	@echo "Targets:"
-	@echo "  make venv          create local .venv + install test deps + vendored sentinel"
+	@echo "  make venv          create local .venv (Python 3.11) + install test deps + vendored observe"
 	@echo "  make up            docker compose up -d (core + airflow stack)"
 	@echo "  make down          docker compose down -v (deletes volumes)"
 	@echo "  make restart       restart Flink JM/TM"
 	@echo "  make submit        submit PyFlink job via Flink REST"
 	@echo "  make logs          tail Flink JM + TM logs"
-	@echo "  make test          run unit tests"
+	@echo "  make test          run unit tests (auto-creates .venv if needed)"
 	@echo "  make query         python iceberg/query_time_travel.py (against localhost)"
 	@echo "  make clean         remove .venv, __pycache__, etc."
 	@echo "  make airflow-ui    show URL for Airflow UI (http://localhost:8082)"
 
-venv:
+$(OBSERVE):
+	rm -rf $(VENV)
 	$(PYTHON) -m venv $(VENV)
 	$(PIP) install --upgrade pip
 	$(PIP) install pytest pytest-cov pyiceberg[s3]==0.5.1 pyarrow confluent-kafka faker
-	$(PIP) install vendor/pipeline_sentinel-0.1.0-py3-none-any.whl
+	$(PIP) install vendor/pipeline_observe-0.1.0-py3-none-any.whl
+	touch $(OBSERVE)
+
+venv: $(OBSERVE)
 
 up:
 	docker compose up -d
@@ -40,10 +45,10 @@ submit:
 logs:
 	docker compose logs -f flink-jobmanager flink-taskmanager
 
-test:
+test: $(OBSERVE)
 	$(VENV)/bin/pytest tests/ -v
 
-query:
+query: $(OBSERVE)
 	ICEBERG_CATALOG_URI=http://localhost:8181 MINIO_ENDPOINT=http://localhost:9000 \
 		$(VENV)/bin/python iceberg/query_time_travel.py
 

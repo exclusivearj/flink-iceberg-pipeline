@@ -24,12 +24,19 @@ RUN pip3 install --no-cache-dir -r /tmp/requirements.txt
 # Flink 1.18 runtime), so 1.5.2 is the lowest version with both required artifacts.
 ARG FLINK_KAFKA_VER=3.1.0-1.18
 ARG ICEBERG_VER=1.5.2
+# Flink's Iceberg connector instantiates a Hadoop Configuration during catalog
+# init (even for a REST catalog + S3FileIO), but the flink:1.18 base ships no
+# Hadoop classes — without this uber jar, CREATE CATALOG throws
+# ClassNotFoundException: org.apache.hadoop.conf.Configuration.
+ARG HADOOP_UBER_VER=2.8.3-10.0
 RUN set -eux; \
     cd /opt/flink/lib; \
     curl -fsSL -O https://repo.maven.apache.org/maven2/org/apache/flink/flink-sql-connector-kafka/${FLINK_KAFKA_VER}/flink-sql-connector-kafka-${FLINK_KAFKA_VER}.jar; \
     curl -fsSL -O https://repo.maven.apache.org/maven2/org/apache/iceberg/iceberg-flink-runtime-1.18/${ICEBERG_VER}/iceberg-flink-runtime-1.18-${ICEBERG_VER}.jar; \
-    curl -fsSL -O https://repo.maven.apache.org/maven2/org/apache/iceberg/iceberg-aws-bundle/${ICEBERG_VER}/iceberg-aws-bundle-${ICEBERG_VER}.jar
+    curl -fsSL -O https://repo.maven.apache.org/maven2/org/apache/iceberg/iceberg-aws-bundle/${ICEBERG_VER}/iceberg-aws-bundle-${ICEBERG_VER}.jar; \
+    curl -fsSL -O https://repo.maven.apache.org/maven2/org/apache/flink/flink-shaded-hadoop-2-uber/${HADOOP_UBER_VER}/flink-shaded-hadoop-2-uber-${HADOOP_UBER_VER}.jar
 
-# Copy job code
+# Copy job code. The modules use absolute package imports (`from flink_job.x
+# import ...`), so the package PARENT must be on the path, not the package dir.
 COPY . /opt/flink_job/
-ENV PYTHONPATH=/opt/flink_job
+ENV PYTHONPATH=/opt

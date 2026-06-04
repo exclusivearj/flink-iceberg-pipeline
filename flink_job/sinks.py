@@ -16,7 +16,7 @@ except Exception:  # pragma: no cover
 
 
 ICEBERG_TABLE_DDL = """
-CREATE TABLE IF NOT EXISTS {catalog}.default.page_events_aggregated (
+CREATE TABLE IF NOT EXISTS {catalog}.`default`.page_events_aggregated (
     window_start    TIMESTAMP(3),
     window_end      TIMESTAMP(3),
     event_type      STRING,
@@ -49,7 +49,7 @@ def create_iceberg_sink(
     s3_endpoint = s3_endpoint or os.environ.get("MINIO_ENDPOINT", "http://minio:9000")
 
     create_catalog = f"""
-        CREATE CATALOG IF NOT EXISTS {catalog_name} WITH (
+        CREATE CATALOG {catalog_name} WITH (
             'type' = 'iceberg',
             'catalog-impl' = 'org.apache.iceberg.rest.RESTCatalog',
             'uri' = '{catalog_uri}',
@@ -63,7 +63,7 @@ def create_iceberg_sink(
     """
     table_env.execute_sql(create_catalog)
     table_env.execute_sql(f"USE CATALOG {catalog_name}")
-    table_env.execute_sql("CREATE DATABASE IF NOT EXISTS default")
+    table_env.execute_sql("CREATE DATABASE IF NOT EXISTS `default`")
     table_env.execute_sql(ICEBERG_TABLE_DDL.format(catalog=catalog_name))
     return f"{catalog_name}.default.page_events_aggregated"
 

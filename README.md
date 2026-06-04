@@ -92,6 +92,7 @@ A clean `make up` builds three local images (`flink-jobmanager`, `event-generato
 - **Flink image — JDK headers + `g++`.** `apache-flink==1.18.0` pulls `pemja`, which has no arm64 wheel and needs `g++` plus JNI headers. The `flink:1.18` base ships only a JRE, so `flink_job/Dockerfile` installs `openjdk-11-jdk-headless` and symlinks its `include/` to `/opt/java/openjdk/include` (where `pemja` looks).
 - **Iceberg connector version.** `iceberg-flink-runtime-1.18` was first published at **1.5.0**, so `flink_job/Dockerfile` pins `ICEBERG_VER=1.5.2` (the 1.4.x line has no Flink 1.18 runtime).
 - **Postgres port in the Airflow DB URL.** `AIRFLOW__DATABASE__SQL_ALCHEMY_CONN` must include `:5432` (`...@postgres:5432/airflow`). The Astro entrypoint parses the port out of this URL to wait for Postgres with `nc`; omit it and the webserver/scheduler/dag-processor hang on `nc: port number invalid` forever (`airflow-init` is unaffected because it overrides the entrypoint).
+- **Flink `PYTHONPATH` for `make submit`.** The PyFlink modules import each other as the `flink_job` package (`from flink_job.schemas import ...`), so the package's **parent** must be on the path, not the package dir. `flink_job/Dockerfile` sets `ENV PYTHONPATH=/opt` (the code is copied to `/opt/flink_job/`) and `job.py` does `sys.path.insert(0, "/opt")`. Pointing either at `/opt/flink_job` makes `flink run` fail with `ModuleNotFoundError: No module named 'flink_job'` on both the JobManager and the TaskManager Python worker.
 
 ## Repository layout
 

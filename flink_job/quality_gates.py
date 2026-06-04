@@ -173,22 +173,24 @@ def build_metric_record(result: GateResult) -> str:
 class QualityGateProcessor(ProcessFunction):  # type: ignore[misc,valid-type]
     """ProcessFunction with side outputs for DLQ and metrics."""
 
-    def processElement(self, value, ctx):
-        # value comes in as a serialized JSON string from the Kafka source
+    def process_element(self, value, ctx):
+        # value comes in as a serialized JSON string from the Kafka source.
+        # In PyFlink, side outputs are emitted by yielding `(OutputTag, value)`;
+        # the main output is a bare `yield value`. (The Java-style `ctx.output()`
+        # does not exist on the PyFlink Context.)
         raw = value if isinstance(value, str) else str(value)
         try:
             event = deserialize_event(raw)
         except DeserializationError as e:
-            ctx.output(DLQ_TAG, build_dlq_record(raw, f"deserialize:{e}"))
-            ctx.output(
-                METRICS_TAG,
-                build_metric_record(GateResult(False, f"deserialize:{e}", "deserialize")),
+            yield DLQ_TAG, build_dlq_record(raw, f"deserialize:{e}")
+            yield METRICS_TAG, build_metric_record(
+                GateResult(False, f"deserialize:{e}", "deserialize")
             )
             return
 
         result = evaluate_event(event)
-        ctx.output(METRICS_TAG, build_metric_record(result))
+        yield METRICS_TAG, build_metric_record(result)
         if not result.passed:
-            ctx.output(DLQ_TAG, build_dlq_record(raw, result.reason))
+            yield DLQ_TAG, build_dlq_record(raw, result.reason)
             return
         yield serialize_event(event)

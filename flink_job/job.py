@@ -30,8 +30,9 @@ from pyflink.datastream.functions import KeyedProcessFunction, ProcessWindowFunc
 from pyflink.datastream.state import ValueStateDescriptor
 from pyflink.datastream.window import TumblingEventTimeWindows
 
-# Make the flink_job package importable inside the JM/TM container.
-sys.path.insert(0, "/opt/flink_job")
+# Make the flink_job package importable inside the JM/TM container. The modules
+# import each other as `flink_job.*`, so the package PARENT (/opt) goes on the path.
+sys.path.insert(0, "/opt")
 
 from flink_job.quality_gates import DLQ_TAG, METRICS_TAG, QualityGateProcessor  # noqa: E402
 from flink_job.schemas import deserialize_event  # noqa: E402

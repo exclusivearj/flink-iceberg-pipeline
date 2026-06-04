@@ -152,7 +152,3 @@ This repo is **standalone**: `pipeline-observe` is installed from the vendored w
 ```bash
 .venv/bin/pip install -e ~/Documents/Developer/pipeline-observe
 ```
-
-## Spec sources
-
-Authoritative specs live in `~/Documents/Developer/data-engineering-projects/files/projects/project1-flink-pipeline-orchestration/` — `TASKS.md`, `AIRFLOW_TASKS.md`, `README.md`, `AIRFLOW_README.md`.

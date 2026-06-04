@@ -7,6 +7,7 @@ networks:
 volumes:
   minio-data:
   postgres-data:
+  flink-checkpoints:        # shared FsCheckpointStorage dir for JM + TM
 
 x-airflow-env: &airflow-env
   AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
@@ -145,9 +146,17 @@ services:
         jobmanager.rpc.address: flink-jobmanager
         rest.address: 0.0.0.0
         rest.bind-address: 0.0.0.0
+        state.checkpoints.dir: file:///opt/flink/checkpoints
         metrics.reporter.prom.factory.class: org.apache.flink.metrics.prometheus.PrometheusReporterFactory
         metrics.reporter.prom.port: 9249
+      # job.py reads PARALLELISM at submit time (it runs `flink run` in this
+      # container). Kept at 1 so only one PyFlink Beam Python worker spawns —
+      # the full 14-service stack + per-slot Python workers otherwise OOM-kill
+      # the TaskManager on a ~6 GiB Docker VM. Raise it if you give Docker more memory.
+      PARALLELISM: "1"
     command: jobmanager
+    volumes:
+      - flink-checkpoints:/opt/flink/checkpoints
     networks: [pipeline-net]
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8081/overview"]
@@ -162,10 +171,14 @@ services:
     environment:
       FLINK_PROPERTIES: |
         jobmanager.rpc.address: flink-jobmanager
-        taskmanager.numberOfTaskSlots: 4
+        taskmanager.numberOfTaskSlots: 1
+        taskmanager.memory.process.size: 1280m
+        state.checkpoints.dir: file:///opt/flink/checkpoints
         metrics.reporter.prom.factory.class: org.apache.flink.metrics.prometheus.PrometheusReporterFactory
         metrics.reporter.prom.port: 9249
     command: taskmanager
+    volumes:
+      - flink-checkpoints:/opt/flink/checkpoints
     networks: [pipeline-net]
 
   # ── Event generator ─────────────────────────────────────────────────────

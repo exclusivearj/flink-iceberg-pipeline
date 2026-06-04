@@ -36,6 +36,12 @@ RUN set -eux; \
     curl -fsSL -O https://repo.maven.apache.org/maven2/org/apache/iceberg/iceberg-aws-bundle/${ICEBERG_VER}/iceberg-aws-bundle-${ICEBERG_VER}.jar; \
     curl -fsSL -O https://repo.maven.apache.org/maven2/org/apache/flink/flink-shaded-hadoop-2-uber/${HADOOP_UBER_VER}/flink-shaded-hadoop-2-uber-${HADOOP_UBER_VER}.jar
 
+# Filesystem checkpoint storage dir (shared via a named volume across JM/TM in
+# compose). The default JobManager in-memory storage caps state at 5 MB, which
+# the Kafka source + window state exceeds — see docker-compose state.checkpoints.dir.
+# World-writable so it works regardless of the runtime uid.
+RUN mkdir -p /opt/flink/checkpoints && chmod 777 /opt/flink/checkpoints
+
 # Copy job code. The modules use absolute package imports (`from flink_job.x
 # import ...`), so the package PARENT must be on the path, not the package dir.
 COPY . /opt/flink_job/

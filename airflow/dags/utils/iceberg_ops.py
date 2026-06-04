@@ -73,7 +73,7 @@ def expire_snapshots(namespace: str, table_name: str, older_than_days: int = 7) 
     """
     catalog = get_catalog()
     table = catalog.load_table((namespace, table_name))
-    snaps = sorted(table.snapshots(), key=lambda s: s.timestamp_ms)
+    snaps = sorted(table.metadata.snapshots, key=lambda s: s.timestamp_ms)
     if not snaps:
         return {"expired_snapshots": 0}
     latest_id = snaps[-1].snapshot_id
@@ -91,7 +91,7 @@ def expire_snapshots(namespace: str, table_name: str, older_than_days: int = 7) 
 def get_latest_snapshot_info(namespace: str, table_name: str) -> dict[str, Any]:
     catalog = get_catalog()
     table = catalog.load_table((namespace, table_name))
-    snaps = sorted(table.snapshots(), key=lambda s: s.timestamp_ms)
+    snaps = sorted(table.metadata.snapshots, key=lambda s: s.timestamp_ms)
     if not snaps:
         return {"snapshot_id": None, "timestamp_ms": None, "operation": None}
     latest = snaps[-1]

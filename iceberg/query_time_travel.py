@@ -37,6 +37,7 @@ def _connect():
             "s3.access-key-id": "minioadmin",
             "s3.secret-access-key": "minioadmin",
             "s3.path-style-access": "true",
+            "s3.region": "us-east-1",
         },
     )
 
@@ -47,7 +48,9 @@ def main() -> None:
     catalog = _connect()
     table = catalog.load_table((NAMESPACE, TABLE_NAME))
 
-    snapshots = sorted(table.snapshots(), key=lambda s: s.timestamp_ms)
+    # pyiceberg 0.5.1 has no Table.snapshots() method; snapshots are a list on
+    # the table metadata.
+    snapshots = sorted(table.metadata.snapshots, key=lambda s: s.timestamp_ms)
     if len(snapshots) < 2:
         log.warning(
             "Only %d snapshot(s); time-travel needs at least 2. Wait for the "

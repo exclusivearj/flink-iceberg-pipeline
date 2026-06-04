@@ -9,12 +9,12 @@ This is **Project 1** in the data engineering portfolio. It demonstrates PyFlink
 | Component | Technology |
 |---|---|
 | Stream processor | Apache Flink 1.18 (PyFlink) |
-| Message broker | Apache Kafka 3.6 (3 partitions, 2 topics) |
+| Message broker | Apache Kafka 3.5 (Confluent Platform 7.5, single broker; 3 partitions, 2 topics) |
 | Object storage | MinIO (S3-compatible) |
-| Table format | Apache Iceberg 1.4 |
+| Table format | Apache Iceberg 1.5.2 |
 | Catalog | Iceberg REST catalog (`tabulario/iceberg-rest`) |
 | Observability | Prometheus + Grafana |
-| Orchestration | Astronomer Airflow 2.9 (Astro Runtime 10.5.0) |
+| Orchestration | Astronomer Airflow 3.1 (Astro Runtime 3.1-5) |
 | Data quality | [`pipeline-observe`](vendor/) — vendored wheel |
 
 ## Architecture
@@ -103,6 +103,15 @@ A clean `make up` builds three local images (`flink-jobmanager`, `event-generato
 - **PyFlink `ProcessFunction` method name + side-output API.** The quality-gate function must override `process_element` (snake_case) — Java-style `processElement` leaves the class abstract (`Can't instantiate abstract class ... with abstract method process_element`). Side outputs are emitted by `yield output_tag, value` (the PyFlink `Context` has no Java-style `ctx.output()`).
 - **Memory sizing for a ~6 GiB Docker VM.** PyFlink spawns one Beam Python worker per task slot, each loading pandas/pyarrow outside the JVM heap. With the full 14-service stack resident, four slots OOM-kill the TaskManager (exit 137). The job is pinned to `PARALLELISM=1` (JobManager env, read by `job.py`), `taskmanager.numberOfTaskSlots: 1`, and `taskmanager.memory.process.size: 1280m`. Give Docker more memory to raise these.
 - **Filesystem checkpoint storage.** The job enables exactly-once checkpointing, but the default JobManager in-memory storage caps state at 5 MB — the Kafka-source + window state exceeds it, so every checkpoint fails (`Size of the state is larger than the maximum permitted memory-backed state`) and the job eventually restart-loops. Both Flink services set `state.checkpoints.dir: file:///opt/flink/checkpoints` (which selects `FileSystemCheckpointStorage`) backed by a shared `flink-checkpoints` named volume.
+- **AWS region for the Iceberg S3FileIO.** The Iceberg connector writes data files to MinIO through the AWS SDK v2, which requires a region even for an S3-compatible endpoint. The `flink-jobmanager` and `flink-taskmanager` containers set `AWS_REGION=us-east-1` (matching `iceberg-rest`). Without it the job runs but every checkpoint's Iceberg commit throws `SdkClientException: Unable to load region from any of the providers in the chain`, the job restart-loops replaying the same offsets, and **no snapshots are ever committed** (so the table stays empty and `make query` has nothing to read).
+
+## Troubleshooting `make query`
+
+`make query` runs `iceberg/query_time_travel.py` in the local venv against the REST catalog + MinIO.
+
+- **pyiceberg 0.5.1 snapshot API.** Snapshots are a list at `table.metadata.snapshots` — there is no `Table.snapshots()` method in 0.5.1 (calling it raises `AttributeError: 'Table' object has no attribute 'snapshots'`). Same accessor is used in `airflow/dags/utils/iceberg_ops.py`.
+- **Region on the read side too.** The query venv reads data files from MinIO via pyiceberg's own S3 FileIO, so its `load_catalog(...)` config sets `s3.region`. The REST metadata fetch works over plain HTTP, but the `table.scan().to_arrow()` data read needs the region.
+- **Needs ≥2 snapshots for the time-travel delta.** Each fired 5-min window commits a snapshot on the next checkpoint; give the job a few minutes after `make submit` (it also burns through the Kafka backlog on start, advancing event-time quickly) before expecting a previous-snapshot diff.
 
 ## Repository layout
 

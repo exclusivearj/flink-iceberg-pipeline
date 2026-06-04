@@ -101,7 +101,7 @@ class AggregateWindow(ProcessWindowFunction):
         )
 
 
-def build_job(env: StreamExecutionEnvironment) -> None:
+def build_job(env: StreamExecutionEnvironment) -> "object":
     bootstrap = os.environ.get("KAFKA_BOOTSTRAP_SERVERS", "kafka:29092")
     parallelism = int(os.environ.get("PARALLELISM", "4"))
     checkpoint_ms = int(os.environ.get("CHECKPOINT_INTERVAL_MS", "60000"))
@@ -150,10 +150,9 @@ def build_job(env: StreamExecutionEnvironment) -> None:
         )
     )
 
-    # For the Iceberg sink we hand off to the Table API in main().
-    # Here we just register the aggregated stream as a temporary view via
-    # the table_env in main(); see below.
-    aggregated.print().name("agg-debug")  # local debug helper
+    # The aggregated tuple stream is handed back to main(), which converts it to
+    # a Table and INSERTs it into the Iceberg sink (see main()).
+    return aggregated
 
 
 def main() -> None:
@@ -161,12 +160,10 @@ def main() -> None:
     env = StreamExecutionEnvironment.get_execution_environment()
     env.set_stream_time_characteristic(TimeCharacteristic.EventTime)
 
-    # The Iceberg sink lives in the Table API; we register it here and
-    # use Table API INSERT INTO from the aggregated stream. For brevity
-    # within this single-file job, we delegate the actual sink wiring to
-    # the Iceberg connector by writing aggregated tuples to a temporary
-    # table backed by the iceberg catalog. The DDL is set up by
-    # `flink_job/sinks.py::create_iceberg_sink` at startup.
+    # The Iceberg sink is wired via the Table API: register the REST catalog +
+    # target table, build the DataStream pipeline, convert the aggregated stream
+    # to a Table, and INSERT INTO the Iceberg table. The Iceberg connector
+    # commits a new snapshot on every successful checkpoint.
     from pyflink.table import StreamTableEnvironment  # noqa: E402
 
     table_env = StreamTableEnvironment.create(env)
@@ -175,7 +172,35 @@ def main() -> None:
     iceberg_table = create_iceberg_sink(table_env)
     logging.info("Iceberg sink table registered: %s", iceberg_table)
 
-    build_job(env)
+    aggregated = build_job(env)
+
+    # Convert the aggregated tuple stream — (window_start_ms, window_end_ms,
+    # event_type, country_code, event_count, unique_users, processed_at_ms),
+    # exposed as columns f0..f6 — into the Iceberg table's typed columns. The
+    # epoch-millis longs become TIMESTAMP(3)/TIMESTAMP_LTZ(3); event_date is
+    # derived from window_start.
+    table_env.create_temporary_view("agg_stream", aggregated)
+    stmt = table_env.create_statement_set()
+    stmt.add_insert_sql(
+        f"""
+        INSERT INTO {iceberg_table}
+        SELECT
+            CAST(TO_TIMESTAMP_LTZ(f0, 3) AS TIMESTAMP(3)),
+            CAST(TO_TIMESTAMP_LTZ(f1, 3) AS TIMESTAMP(3)),
+            f2,
+            f3,
+            f4,
+            f5,
+            TO_TIMESTAMP_LTZ(f6, 3),
+            CAST(TO_TIMESTAMP_LTZ(f0, 3) AS DATE)
+        FROM agg_stream
+        """
+    )
+
+    # attach_as_datastream() folds the Table INSERT into the DataStream job, so a
+    # single env.execute() runs the Kafka source, quality gates, DLQ sink, window
+    # aggregation, and Iceberg sink as one job.
+    stmt.attach_as_datastream()
     env.execute("flink-quality-pipeline")
 
 

@@ -65,7 +65,7 @@ def create_iceberg_sink(
     table_env.execute_sql(f"USE CATALOG {catalog_name}")
     table_env.execute_sql("CREATE DATABASE IF NOT EXISTS `default`")
     table_env.execute_sql(ICEBERG_TABLE_DDL.format(catalog=catalog_name))
-    return f"{catalog_name}.default.page_events_aggregated"
+    return f"{catalog_name}.`default`.page_events_aggregated"
 
 
 def create_dlq_kafka_sink_ddl(

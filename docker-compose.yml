@@ -149,6 +149,11 @@ services:
         state.checkpoints.dir: file:///opt/flink/checkpoints
         metrics.reporter.prom.factory.class: org.apache.flink.metrics.prometheus.PrometheusReporterFactory
         metrics.reporter.prom.port: 9249
+      # The Iceberg S3FileIO (AWS SDK v2) requires a region even against MinIO —
+      # without it every commit fails with `SdkClientException: Unable to load
+      # region` and the job restart-loops, committing no snapshots.
+      AWS_REGION: us-east-1
+      AWS_DEFAULT_REGION: us-east-1
       # job.py reads PARALLELISM at submit time (it runs `flink run` in this
       # container). Kept at 1 so only one PyFlink Beam Python worker spawns —
       # the full 14-service stack + per-slot Python workers otherwise OOM-kill
@@ -176,6 +181,9 @@ services:
         state.checkpoints.dir: file:///opt/flink/checkpoints
         metrics.reporter.prom.factory.class: org.apache.flink.metrics.prometheus.PrometheusReporterFactory
         metrics.reporter.prom.port: 9249
+      # Region for the Iceberg S3FileIO that writes data files to MinIO (see JM).
+      AWS_REGION: us-east-1
+      AWS_DEFAULT_REGION: us-east-1
     command: taskmanager
     volumes:
       - flink-checkpoints:/opt/flink/checkpoints
